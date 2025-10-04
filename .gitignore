@@ -1,0 +1,45 @@
+# Build outputs
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build system internal files
+BUILD.log
+BUILD.pid
+NOTIFIED.flag
+CONTEXT.md
+PLAN.md
+PRD.md
+*_REVIEW.md
+REMEDIATION.md
+FAILURE_REPORT.md
+PHASES_COMPLETE.flag
+PHASE6_PARTIAL.md
+SECURITY_VERIFICATION.txt
+
+# Test artifacts
+tests/
+*.test
+coverage/
+
+# Environment (never commit actual env)
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
