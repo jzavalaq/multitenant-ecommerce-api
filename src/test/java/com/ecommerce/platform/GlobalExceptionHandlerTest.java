@@ -13,19 +13,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("dev")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @TestPropertySource(properties = {
-    "jwt.secret=test-secret-key-for-testing-minimum-256-bits-required-here"
+    "jwt.secret=test-secret-key-for-testing-minimum-256-bits-required-here",
+    "rate.limit.enabled=false"
 })
 class GlobalExceptionHandlerTest {
 
@@ -36,12 +36,15 @@ class GlobalExceptionHandlerTest {
     private TenantRepository tenantRepository;
 
     private Tenant tenant;
+    private String tenantSlug;
 
     @BeforeEach
     void setUp() {
+        // Generate unique slug for each test to avoid conflicts
+        tenantSlug = "exception-store-" + UUID.randomUUID().toString().substring(0, 8);
         tenant = Tenant.builder()
-                .name("Exception Test Store")
-                .slug("exception-store")
+                .name("Exception Test Store " + tenantSlug)
+                .slug(tenantSlug)
                 .build();
         tenant = tenantRepository.save(tenant);
     }
@@ -51,7 +54,7 @@ class GlobalExceptionHandlerTest {
         // Test ResourceNotFoundException via non-existent tenant
         AuthRequest request = AuthRequest.builder()
                 .email("test@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("non-existent-tenant")
                 .role("CUSTOMER")
                 .build();
@@ -68,8 +71,8 @@ class GlobalExceptionHandlerTest {
     void handleBadRequest_duplicateEmail_shouldReturn400() {
         AuthRequest request = AuthRequest.builder()
                 .email("duplicate@example.com")
-                .password("password123")
-                .tenantSlug("exception-store")
+                .password("SecurePass123")
+                .tenantSlug(tenantSlug)
                 .role("CUSTOMER")
                 .build();
 
@@ -107,8 +110,8 @@ class GlobalExceptionHandlerTest {
     void handleBadRequest_invalidCredentials_shouldReturn400() {
         AuthRequest registerRequest = AuthRequest.builder()
                 .email("credtest@example.com")
-                .password("password123")
-                .tenantSlug("exception-store")
+                .password("SecurePass123")
+                .tenantSlug(tenantSlug)
                 .role("CUSTOMER")
                 .build();
 
@@ -117,8 +120,8 @@ class GlobalExceptionHandlerTest {
         // Try to login with wrong password
         AuthRequest loginRequest = AuthRequest.builder()
                 .email("credtest@example.com")
-                .password("wrongpassword")
-                .tenantSlug("exception-store")
+                .password("WrongPassword123")
+                .tenantSlug(tenantSlug)
                 .build();
 
         ResponseEntity<ErrorResponse> response = restTemplate.postForEntity(

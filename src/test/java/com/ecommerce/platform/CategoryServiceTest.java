@@ -11,9 +11,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("dev")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@Transactional
 @TestPropertySource(properties = {
     "jwt.secret=test-secret-key-for-testing-minimum-256-bits-required-here"
 })
@@ -49,10 +49,10 @@ class CategoryServiceTest {
 
     @Test
     void getCategories_shouldReturnEmptyListForNewTenant() {
-        List<?> categories = categoryService.getCategories(tenant.getId());
+        var categories = categoryService.getCategories(tenant.getId(), 0, 20);
 
         assertNotNull(categories);
-        assertTrue(categories.isEmpty());
+        assertTrue(categories.getContent().isEmpty());
     }
 
     @Test
@@ -170,8 +170,8 @@ class CategoryServiceTest {
         categoryService.createCategory(tenant.getId(), request1);
         categoryService.createCategory(tenant.getId(), request2);
 
-        var categories = categoryService.getCategories(tenant.getId());
+        var categories = categoryService.getCategories(tenant.getId(), 0, 20);
 
-        assertEquals(2, categories.size());
+        assertEquals(2, categories.getContent().size());
     }
 }

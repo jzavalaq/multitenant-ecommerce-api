@@ -10,8 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("dev")
 @TestPropertySource(properties = {
-    "spring.h2.console.enabled=true",
-    "jwt.secret=test-secret-key-for-testing"
+    "spring.h2.console.enabled=false",
+    "jwt.secret=test-secret-key-for-testing-minimum-256-bits-required-here"
 })
 class ScaffoldTest {
 

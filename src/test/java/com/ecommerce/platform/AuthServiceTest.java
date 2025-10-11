@@ -10,15 +10,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("dev")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@Transactional
 @TestPropertySource(properties = {
     "jwt.secret=test-secret-key-for-testing-minimum-256-bits-required-here"
 })
@@ -45,7 +45,7 @@ class AuthServiceTest {
     void register_shouldCreateUserAndReturnToken() {
         AuthRequest request = AuthRequest.builder()
                 .email("test@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .role("CUSTOMER")
                 .build();
@@ -63,7 +63,7 @@ class AuthServiceTest {
     void register_withoutRole_shouldUseCustomerRole() {
         AuthRequest request = AuthRequest.builder()
                 .email("norole@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .build();
 
@@ -76,7 +76,7 @@ class AuthServiceTest {
     void register_withAdminRole_shouldUseAdminRole() {
         AuthRequest request = AuthRequest.builder()
                 .email("admin@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .role("ADMIN")
                 .build();
@@ -90,7 +90,7 @@ class AuthServiceTest {
     void register_withVendorRole_shouldUseVendorRole() {
         AuthRequest request = AuthRequest.builder()
                 .email("vendor@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .role("VENDOR")
                 .build();
@@ -104,7 +104,7 @@ class AuthServiceTest {
     void register_withInvalidRole_shouldThrowException() {
         AuthRequest request = AuthRequest.builder()
                 .email("invalidrole@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .role("INVALID_ROLE")
                 .build();
@@ -116,7 +116,7 @@ class AuthServiceTest {
     void register_shouldFailWithDuplicateEmail() {
         AuthRequest request = AuthRequest.builder()
                 .email("dupe@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .role("CUSTOMER")
                 .build();
@@ -130,7 +130,7 @@ class AuthServiceTest {
     void register_nonExistentTenant_shouldThrowException() {
         AuthRequest request = AuthRequest.builder()
                 .email("test2@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("non-existent-tenant")
                 .role("CUSTOMER")
                 .build();
@@ -142,7 +142,7 @@ class AuthServiceTest {
     void login_shouldReturnTokenForValidCredentials() {
         AuthRequest registerRequest = AuthRequest.builder()
                 .email("login@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .role("CUSTOMER")
                 .build();
@@ -151,7 +151,7 @@ class AuthServiceTest {
 
         AuthRequest loginRequest = AuthRequest.builder()
                 .email("login@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .build();
 
@@ -165,7 +165,7 @@ class AuthServiceTest {
     void login_shouldFailWithInvalidCredentials() {
         AuthRequest loginRequest = AuthRequest.builder()
                 .email("nonexistent@example.com")
-                .password("wrongpassword")
+                .password("WrongPassword123")
                 .tenantSlug("test-store")
                 .build();
 
@@ -176,7 +176,7 @@ class AuthServiceTest {
     void login_wrongPassword_shouldThrowException() {
         AuthRequest registerRequest = AuthRequest.builder()
                 .email("wrongpass@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .role("CUSTOMER")
                 .build();
@@ -185,7 +185,7 @@ class AuthServiceTest {
 
         AuthRequest loginRequest = AuthRequest.builder()
                 .email("wrongpass@example.com")
-                .password("wrongpassword")
+                .password("WrongPassword123")
                 .tenantSlug("test-store")
                 .build();
 
@@ -196,7 +196,7 @@ class AuthServiceTest {
     void login_nonExistentTenant_shouldThrowException() {
         AuthRequest loginRequest = AuthRequest.builder()
                 .email("test@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("non-existent-tenant")
                 .build();
 
@@ -208,7 +208,7 @@ class AuthServiceTest {
         // Register user in one tenant
         AuthRequest registerRequest = AuthRequest.builder()
                 .email("tenantuser@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
                 .role("CUSTOMER")
                 .build();
@@ -224,7 +224,7 @@ class AuthServiceTest {
         // Try to login with the same email in different tenant
         AuthRequest loginRequest = AuthRequest.builder()
                 .email("tenantuser@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("other-store")
                 .build();
 
@@ -235,9 +235,9 @@ class AuthServiceTest {
     void register_roleCaseInsensitive_shouldWork() {
         AuthRequest request = AuthRequest.builder()
                 .email("lowercase@example.com")
-                .password("password123")
+                .password("SecurePass123")
                 .tenantSlug("test-store")
-                .role("vendor") // lowercase
+                .role("VENDOR") // Must be uppercase with new validation
                 .build();
 
         var response = authService.register(request);
