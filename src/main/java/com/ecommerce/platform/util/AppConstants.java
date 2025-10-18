@@ -15,6 +15,9 @@ public final class AppConstants {
     public static final int DEFAULT_PAGE_SIZE = 20;
     public static final int MAX_PAGE_SIZE = 100;
 
+    // Cart limits
+    public static final int MAX_CART_ITEM_QUANTITY = 99;
+
     // Error messages
     public static final String ERROR_INVALID_PAGINATION = "Invalid page or size parameters";
     public static final String ERROR_EMAIL_ALREADY_REGISTERED = "Email already registered in this tenant";

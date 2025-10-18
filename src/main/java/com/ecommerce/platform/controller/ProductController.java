@@ -5,18 +5,22 @@ import com.ecommerce.platform.dto.ProductRequest;
 import com.ecommerce.platform.dto.ProductResponse;
 import com.ecommerce.platform.security.JwtAuthenticationFilter;
 import com.ecommerce.platform.service.ProductService;
+import com.ecommerce.platform.util.AppConstants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -33,6 +37,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Products", description = "Product management endpoints")
 @SecurityRequirement(name = "Bearer")
 @Slf4j
+@Validated
 public class ProductController {
 
     private final ProductService productService;
@@ -54,8 +59,8 @@ public class ProductController {
     })
     public ResponseEntity<PagedResponse<ProductResponse>> getProducts(
             @AuthenticationPrincipal JwtAuthenticationFilter.UserPrincipal principal,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
             @RequestParam(required = false) Long categoryId) {
         log.info("Fetching products for tenant: {}, page: {}, size: {}", principal.tenantId(), page, size);
         return ResponseEntity.ok(productService.getProducts(principal.tenantId(), page, size, categoryId));

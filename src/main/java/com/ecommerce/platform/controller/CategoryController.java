@@ -2,6 +2,7 @@ package com.ecommerce.platform.controller;
 
 import com.ecommerce.platform.dto.CategoryRequest;
 import com.ecommerce.platform.dto.CategoryResponse;
+import com.ecommerce.platform.dto.PagedResponse;
 import com.ecommerce.platform.security.JwtAuthenticationFilter;
 import com.ecommerce.platform.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,15 +11,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * REST controller for category management operations.
@@ -34,15 +36,18 @@ import java.util.List;
 @Tag(name = "Categories", description = "Category management endpoints")
 @SecurityRequirement(name = "Bearer")
 @Slf4j
+@Validated
 public class CategoryController {
 
     private final CategoryService categoryService;
 
     /**
-     * Retrieves all categories for the current tenant.
+     * Retrieves all categories for the current tenant with pagination support.
      *
      * @param principal the authenticated user principal
-     * @return list of categories
+     * @param page      the page number (0-indexed)
+     * @param size      the page size
+     * @return paginated list of categories
      */
     @GetMapping
     @Operation(summary = "Get all categories for tenant")
@@ -50,10 +55,12 @@ public class CategoryController {
             @ApiResponse(responseCode = "200", description = "Categories retrieved successfully"),
             @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public ResponseEntity<List<CategoryResponse>> getCategories(
-            @AuthenticationPrincipal JwtAuthenticationFilter.UserPrincipal principal) {
-        log.info("Fetching categories for tenant: {}", principal.tenantId());
-        return ResponseEntity.ok(categoryService.getCategories(principal.tenantId()));
+    public ResponseEntity<PagedResponse<CategoryResponse>> getCategories(
+            @AuthenticationPrincipal JwtAuthenticationFilter.UserPrincipal principal,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        log.info("Fetching categories for tenant: {}, page: {}, size: {}", principal.tenantId(), page, size);
+        return ResponseEntity.ok(categoryService.getCategories(principal.tenantId(), page, size));
     }
 
     /**

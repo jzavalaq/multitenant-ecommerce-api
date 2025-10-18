@@ -106,7 +106,7 @@ public class CartController {
         if (quantity == null || quantity < 0) {
             throw new BadRequestException("Quantity must be >= 0");
         }
-        int safeQuantity = Math.min(quantity, AppConstants.MAX_PAGE_SIZE);
+        int safeQuantity = Math.min(quantity, AppConstants.MAX_CART_ITEM_QUANTITY);
         return ResponseEntity.ok(cartService.updateCartItem(principal.userId(), itemId, safeQuantity));
     }
 

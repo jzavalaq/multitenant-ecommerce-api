@@ -49,7 +49,7 @@ public class CartService {
      * @param userId the user ID
      * @return the cart response
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public CartResponse getCart(Long userId) {
         log.debug("Fetching cart for user: {}", userId);
         Cart cart = cartRepository.findByUserId(userId)

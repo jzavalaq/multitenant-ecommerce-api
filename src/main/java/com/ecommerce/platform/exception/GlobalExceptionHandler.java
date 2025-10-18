@@ -1,7 +1,10 @@
 package com.ecommerce.platform.exception;
 
 import com.ecommerce.platform.dto.ErrorResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Global exception handler for the application.
@@ -128,6 +132,69 @@ public class GlobalExceptionHandler {
         ErrorResponse error = ErrorResponse.builder()
                 .error("BAD_REQUEST")
                 .message(ex.getMessage())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
+     * Handles DataIntegrityViolationException.
+     * <p>
+     * Catches database constraint violations such as unique constraint violations
+     * and converts them to user-friendly error messages.
+     * </p>
+     *
+     * @param ex the exception
+     * @return 409 CONFLICT response
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMessage());
+
+        String message = "Data integrity violation";
+        String rootMessage = ex.getRootCause() != null ? ex.getRootCause().getMessage() : "";
+
+        // Parse common constraint violations for user-friendly messages
+        if (rootMessage.contains("idx_cart_items_cart_variant_unique") ||
+            rootMessage.contains("cart_id, variant_id")) {
+            message = "This product variant is already in your cart";
+        } else if (rootMessage.contains("unique") || rootMessage.contains("duplicate")) {
+            message = "A record with this information already exists";
+        }
+
+        ErrorResponse error = ErrorResponse.builder()
+                .error("CONFLICT")
+                .message(message)
+                .status(HttpStatus.CONFLICT.value())
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /**
+     * Handles ConstraintViolationException.
+     * <p>
+     * Catches validation errors on request parameters (e.g., @Min, @Max annotations)
+     * and converts them to user-friendly error messages.
+     * </p>
+     *
+     * @param ex the exception
+     * @return 400 BAD REQUEST response with validation details
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            String propertyPath = violation.getPropertyPath().toString();
+            String fieldName = propertyPath.contains(".")
+                    ? propertyPath.substring(propertyPath.lastIndexOf('.') + 1)
+                    : propertyPath;
+            errors.put(fieldName, violation.getMessage());
+        }
+
+        log.warn("Constraint violation: {}", errors);
+        ErrorResponse error = ErrorResponse.builder()
+                .error("VALIDATION_ERROR")
+                .message(errors.toString())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .build();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);

@@ -2,15 +2,22 @@ package com.ecommerce.platform.service;
 
 import com.ecommerce.platform.dto.CategoryRequest;
 import com.ecommerce.platform.dto.CategoryResponse;
+import com.ecommerce.platform.dto.PagedResponse;
 import com.ecommerce.platform.entity.Category;
 import com.ecommerce.platform.entity.Tenant;
+import com.ecommerce.platform.exception.BadRequestException;
 import com.ecommerce.platform.exception.ResourceNotFoundException;
 import com.ecommerce.platform.repository.CategoryRepository;
 import com.ecommerce.platform.repository.TenantRepository;
+import com.ecommerce.platform.util.AppConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,23 +40,48 @@ public class CategoryService {
     private final TenantRepository tenantRepository;
 
     /**
-     * Retrieves all categories for a tenant.
+     * Retrieves all categories for a tenant with pagination support.
      * <p>
      * Results are cached to improve performance.
      * </p>
      *
      * @param tenantId the tenant ID
-     * @return list of categories
+     * @param page     the page number (0-indexed)
+     * @param size     the page size
+     * @return paginated response of categories
+     * @throws BadRequestException if pagination parameters are invalid
      */
     @Transactional(readOnly = true)
-    @Cacheable(value = "categories", key = "#tenantId")
-    public List<CategoryResponse> getCategories(Long tenantId) {
-        log.debug("Fetching categories for tenant: {}", tenantId);
-        List<CategoryResponse> categories = categoryRepository.findByTenantId(tenantId).stream()
+    @Cacheable(value = "categories", key = "#tenantId + '_' + #page + '_' + #size")
+    public PagedResponse<CategoryResponse> getCategories(Long tenantId, int page, int size) {
+        log.debug("Fetching categories for tenant: {}, page: {}, size: {}", tenantId, page, size);
+
+        // Validate pagination parameters
+        if (page < 0 || size < 1) {
+            throw new BadRequestException(AppConstants.ERROR_INVALID_PAGINATION);
+        }
+
+        int safeSize = Math.min(size, AppConstants.MAX_PAGE_SIZE);
+        if (page < 0) page = AppConstants.DEFAULT_PAGE;
+        if (safeSize < 1) safeSize = AppConstants.DEFAULT_PAGE_SIZE;
+
+        Pageable pageable = PageRequest.of(page, safeSize, Sort.by("name").ascending());
+        Page<Category> categoryPage = categoryRepository.findByTenantId(tenantId, pageable);
+
+        List<CategoryResponse> content = categoryPage.getContent().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
-        log.debug("Retrieved {} categories for tenant: {}", categories.size(), tenantId);
-        return categories;
+
+        log.debug("Retrieved {} categories for tenant: {}", content.size(), tenantId);
+
+        return PagedResponse.<CategoryResponse>builder()
+                .content(content)
+                .pageNumber(categoryPage.getNumber())
+                .pageSize(categoryPage.getSize())
+                .totalElements(categoryPage.getTotalElements())
+                .totalPages(categoryPage.getTotalPages())
+                .last(categoryPage.isLast())
+                .build();
     }
 
     /**
