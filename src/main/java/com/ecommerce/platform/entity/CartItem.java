@@ -15,7 +15,11 @@ import java.time.Instant;
  * </p>
  */
 @Entity
-@Table(name = "cart_items")
+@Table(name = "cart_items", indexes = {
+    @Index(name = "idx_cart_items_cart_id", columnList = "cart_id"),
+    @Index(name = "idx_cart_items_variant_id", columnList = "variant_id"),
+    @Index(name = "idx_cart_items_cart_variant", columnList = "cart_id, variant_id", unique = true)
+})
 @Data
 @Builder
 @NoArgsConstructor

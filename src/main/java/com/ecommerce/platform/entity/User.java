@@ -15,7 +15,11 @@ import java.time.Instant;
  * </p>
  */
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_tenant_id", columnList = "tenant_id"),
+    @Index(name = "idx_users_email", columnList = "email", unique = true),
+    @Index(name = "idx_users_tenant_email", columnList = "tenant_id, email")
+})
 @Data
 @Builder
 @NoArgsConstructor

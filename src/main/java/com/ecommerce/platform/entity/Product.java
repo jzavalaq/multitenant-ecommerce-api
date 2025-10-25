@@ -16,7 +16,11 @@ import java.time.Instant;
  * </p>
  */
 @Entity
-@Table(name = "products")
+@Table(name = "products", indexes = {
+    @Index(name = "idx_products_tenant_id", columnList = "tenant_id"),
+    @Index(name = "idx_products_category_id", columnList = "category_id"),
+    @Index(name = "idx_products_tenant_category", columnList = "tenant_id, category_id")
+})
 @Data
 @Builder
 @NoArgsConstructor

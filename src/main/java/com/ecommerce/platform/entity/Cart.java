@@ -17,7 +17,9 @@ import java.util.List;
  * </p>
  */
 @Entity
-@Table(name = "carts")
+@Table(name = "carts", indexes = {
+    @Index(name = "idx_carts_user_id", columnList = "user_id", unique = true)
+})
 @Data
 @Builder
 @NoArgsConstructor

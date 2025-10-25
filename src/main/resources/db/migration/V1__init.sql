@@ -24,6 +24,7 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_tenant_id ON users(tenant_id);
 CREATE INDEX idx_users_email ON users(email);
+CREATE UNIQUE INDEX idx_users_tenant_email ON users(tenant_id, email);
 
 -- Categories table
 CREATE TABLE categories (
@@ -38,6 +39,7 @@ CREATE TABLE categories (
 
 CREATE INDEX idx_categories_tenant_id ON categories(tenant_id);
 CREATE INDEX idx_categories_parent_id ON categories(parent_id);
+CREATE INDEX idx_categories_tenant_parent ON categories(tenant_id, parent_id);
 
 -- Products table
 CREATE TABLE products (
@@ -53,6 +55,7 @@ CREATE TABLE products (
 
 CREATE INDEX idx_products_tenant_id ON products(tenant_id);
 CREATE INDEX idx_products_category_id ON products(category_id);
+CREATE INDEX idx_products_tenant_category ON products(tenant_id, category_id);
 
 -- Product variants table
 CREATE TABLE product_variants (
@@ -93,3 +96,4 @@ CREATE TABLE cart_items (
 
 CREATE INDEX idx_cart_items_cart_id ON cart_items(cart_id);
 CREATE INDEX idx_cart_items_variant_id ON cart_items(variant_id);
+CREATE UNIQUE INDEX idx_cart_items_cart_variant_unique ON cart_items(cart_id, variant_id);
