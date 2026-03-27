@@ -1,167 +1,200 @@
-# Multi-Tenant E-Commerce Platform
+# Multi-Tenant E-Commerce API
 
 [![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen?logo=springboot)](https://spring.io/projects/spring-boot)
-[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](Dockerfile)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue?logo=postgresql)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](Dockerfile)
+[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+[![CI](https://github.com/jzavalaq/multitenant-ecommerce-api/actions/workflows/ci.yml/badge.svg)](https://github.com/jzavalaq/multitenant-ecommerce-api/actions/workflows/ci.yml)
 
-A robust multi-tenant e-commerce platform backend built with Java 21 and Spring Boot 3.2. This platform supports multiple vendors (tenants) with isolated product catalogs, JWT-based authentication with role-based access control, and a complete shopping cart system.
+> A multi-tenant e-commerce platform with vendor isolation, product variants, inventory management, and shopping cart functionality.
 
-## Features
+**Live Demo:** _Coming soon_ | **Swagger UI:** _Coming soon_
 
-- **Multi-Tenancy**: Complete vendor data isolation with tenant context
-- **Product Management**: Variants, categories, inventory tracking
-- **Shopping Cart**: Real-time stock validation, bulk operations
-- **Role-Based Access**: Admin, Vendor, Customer roles
+---
+
+## Key Features
+
+- **Multi-Tenancy**: Complete vendor data isolation with tenant context propagation
+- **Product Management**: Products with variants (SKU, price, stock), categories, and inventory tracking
+- **Shopping Cart**: Real-time stock validation, bulk operations, cart persistence
+- **Role-Based Access Control**: Admin, Vendor, and Customer roles with fine-grained permissions
+- **JWT Authentication**: Secure token-based auth with tenant-bound tokens
+- **Database Indexing**: Optimized queries with proper entity indexes
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Clients
+        WebStore[Web Storefront]
+        VendorPortal[Vendor Portal]
+        AdminPanel[Admin Panel]
+    end
+
+    subgraph "API Layer"
+        AuthFilter[Auth Filter<br/>Tenant Resolver]
+    end
+
+    subgraph "E-Commerce Service :8080"
+        AuthCtrl[Auth Controller]
+        ProductCtrl[Product Controller]
+        CategoryCtrl[Category Controller]
+        CartCtrl[Cart Controller]
+    end
+
+    subgraph "Business Layer"
+        AuthService[Auth Service]
+        ProductService[Product Service]
+        CartService[Cart Service]
+        TenantContext[Tenant Context]
+    end
+
+    subgraph "Data Layer"
+        PostgreSQL[(PostgreSQL<br/>Multi-Tenant)]
+    end
+
+    subgraph "Tenant Isolation"
+        TenantA[Tenant A Data]
+        TenantB[Tenant B Data]
+        TenantC[Tenant C Data]
+    end
+
+    WebStore --> AuthFilter
+    VendorPortal --> AuthFilter
+    AdminPanel --> AuthFilter
+
+    AuthFilter --> AuthCtrl
+    AuthFilter --> ProductCtrl
+    AuthFilter --> CategoryCtrl
+    AuthFilter --> CartCtrl
+
+    AuthCtrl --> AuthService
+    ProductCtrl --> ProductService
+    CartCtrl --> CartService
+
+    ProductService --> TenantContext
+    CartService --> TenantContext
+
+    ProductService --> PostgreSQL
+    CartService --> PostgreSQL
+    AuthService --> PostgreSQL
+
+    PostgreSQL --> TenantA
+    PostgreSQL --> TenantB
+    PostgreSQL --> TenantC
+```
+
+---
+
+## Multi-Tenancy Strategy
+
+This implementation uses **shared database with discriminator column** approach:
+
+| Strategy | Description |
+|----------|-------------|
+| **Shared Database** | All tenants share the same database |
+| **Tenant ID Column** | Each table has `tenant_id` for data isolation |
+| **Context Propagation** | Tenant resolved from JWT token or request header |
+| **Query Filtering** | Automatic tenant filtering in repository queries |
+
+### Tenant Resolution Flow
+
+1. Request arrives with JWT token
+2. Token contains `tenant_slug` claim
+3. `TenantContext` stores current tenant
+4. Repository queries automatically filter by tenant
+
+---
+
+## Architectural Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Shared Database** | Cost-effective for SaaS, simpler maintenance |
+| **Tenant ID Column** | Clean data isolation without schema complexity |
+| **Product Variants** | Flexible SKU management with stock tracking |
+| **Cart Persistence** | Database-backed cart survives session timeout |
+| **RBAC with Tenant** | Roles scoped per tenant for vendor isolation |
+
+---
 
 ## Tech Stack
 
-| Technology | Version | Description |
-|------------|---------|-------------|
+| Technology | Version | Purpose |
+|------------|---------|---------|
 | Java | 21 | Runtime environment |
 | Spring Boot | 3.2.5 | Application framework |
-| Spring Data JPA | 3.2.5 | Data access |
+| Spring Data JPA | 3.2.5 | Data persistence |
 | Spring Security | 6.x | Authentication & authorization |
 | PostgreSQL | 15+ | Production database |
 | H2 | 2.x | Development database |
 | JWT (jjwt) | 0.12.5 | Token-based authentication |
 | Flyway | 10.x | Database migrations |
-| Lombok | 1.18.x | Boilerplate reduction |
 | SpringDoc OpenAPI | 2.5.0 | API documentation |
 
-## Prerequisites
+---
 
-- Java 21 or later
-- Maven 3.9+
-- PostgreSQL 15+ (for production)
-- Docker (optional, for containerized deployment)
+## Quick Start
 
-## Build Instructions
+### Option 1: Docker Compose (Recommended)
 
 ```bash
 # Clone the repository
 git clone https://github.com/jzavalaq/multitenant-ecommerce-api.git
 cd multitenant-ecommerce-api
 
-# Build the project
-mvn clean package -DskipTests
-
-# Build with tests
-mvn clean package
-
-# Run tests only
-mvn test
-```
-
-## Run Instructions
-
-### Development (H2 Database)
-
-```bash
-# Run with dev profile (uses in-memory H2 database)
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
-
-# Or with java -jar
-java -jar target/platform-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
-```
-
-### Production (PostgreSQL)
-
-```bash
-# Set environment variables
-export DB_URL=jdbc:postgresql://localhost:5432/ecommerce
-export DB_USERNAME=your_username
-export DB_PASSWORD=your_password
-export JWT_SECRET=your-256-bit-secret-key-minimum-32-characters-long
-
-# Run with prod profile
-mvn spring-boot:run -Dspring-boot.run.profiles=prod
-
-# Or with java -jar
-java -jar target/platform-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
-```
-
-## Docker Run Instructions
-
-### Quick Start with Docker Compose
-
-The easiest way to run the entire stack (application + PostgreSQL database) is using Docker Compose:
-
-```bash
-# Copy environment template
+# Copy environment file
 cp .env.example .env
-
-# Edit .env with your configuration (optional for development)
-# nano .env
 
 # Start all services
 docker-compose up -d
 
 # View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Stop services and remove volumes
-docker-compose down -v
+docker-compose logs -f app
 ```
 
-The application will be available at:
-- API: http://localhost:8080
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- Health Check: http://localhost:8080/actuator/health
+Services available:
+- **API:** http://localhost:8080
+- **Swagger UI:** http://localhost:8080/swagger-ui.html
+- **Health Check:** http://localhost:8080/actuator/health
 
-### Manual Docker Run
+### Option 2: Local Development (H2)
 
 ```bash
-# Build the Docker image
-docker build -t multitenant-ecommerce-api .
+# Build and run with H2
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
-# Run the container
-docker run -d \
-  --name ecommerce-api \
-  -p 8080:8080 \
-  -e SPRING_PROFILES_ACTIVE=prod \
-  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/ecommerce \
-  -e DB_USERNAME=your_username \
-  -e DB_PASSWORD=your_password \
-  -e JWT_SECRET=your-256-bit-secret-key-minimum-32-characters-long \
-  multitenant-ecommerce-api
-
-# View logs
-docker logs -f ecommerce-api
+# H2 Console: http://localhost:8080/h2-console
+# JDBC URL: jdbc:h2:mem:ecommerce
 ```
 
-## API Documentation
-
-Once the application is running, access the Swagger UI at:
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- OpenAPI JSON: http://localhost:8080/v3/api-docs
+---
 
 ## API Examples
 
 ### Authentication
 
 ```bash
-# Register a new user
+# Register a new user (creates tenant context)
 curl -X POST http://localhost:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "user@example.com",
+    "email": "vendor@example.com",
     "password": "SecurePass123!",
-    "tenantSlug": "tenant-001",
-    "role": "CUSTOMER"
+    "tenantSlug": "acme-store",
+    "role": "VENDOR"
   }'
 
-# Login
+# Login (tenant required)
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "user@example.com",
+    "email": "vendor@example.com",
     "password": "SecurePass123!",
-    "tenantSlug": "tenant-001"
+    "tenantSlug": "acme-store"
   }'
 ```
 
@@ -170,90 +203,29 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 ```bash
 TOKEN="your-jwt-token"
 
-# Get products with pagination
+# List products (tenant-filtered)
 curl -X GET "http://localhost:8080/api/v1/products?page=0&size=20" \
   -H "Authorization: Bearer $TOKEN"
 
-# Get products by category
-curl -X GET "http://localhost:8080/api/v1/products?page=0&size=20&categoryId=1" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Get a specific product
-curl -X GET "http://localhost:8080/api/v1/products/1" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Create a product (requires VENDOR or ADMIN role)
+# Create product with variants
 curl -X POST http://localhost:8080/api/v1/products \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Wireless Headphones",
-    "description": "High-quality wireless headphones with noise cancellation",
+    "description": "Premium noise-canceling headphones",
     "categoryId": 1,
     "variants": [
-      {
-        "sku": "WH-BLK-001",
-        "price": 99.99,
-        "stock": 100
-      }
+      {"sku": "WH-BLK-001", "price": 99.99, "stock": 100},
+      {"sku": "WH-WHT-001", "price": 99.99, "stock": 50}
     ]
-  }'
-
-# Update a product (requires VENDOR or ADMIN role)
-curl -X PUT http://localhost:8080/api/v1/products/1 \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Wireless Headphones Pro",
-    "description": "Premium wireless headphones",
-    "categoryId": 1,
-    "variants": [
-      {
-        "sku": "WH-BLK-001",
-        "price": 129.99,
-        "stock": 50
-      }
-    ]
-  }'
-
-# Delete a product (requires VENDOR or ADMIN role)
-curl -X DELETE http://localhost:8080/api/v1/products/1 \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Categories
-
-```bash
-# Get categories with pagination
-curl -X GET "http://localhost:8080/api/v1/categories?page=0&size=20" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Get a specific category
-curl -X GET http://localhost:8080/api/v1/categories/1" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Create a category (requires VENDOR or ADMIN role)
-curl -X POST http://localhost:8080/api/v1/categories \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Electronics"
-  }'
-
-# Create a subcategory
-curl -X POST http://localhost:8080/api/v1/categories \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Headphones",
-    "parentId": 1
   }'
 ```
 
 ### Shopping Cart
 
 ```bash
-# Get cart (requires CUSTOMER role)
+# Get cart
 curl -X GET http://localhost:8080/api/v1/cart \
   -H "Authorization: Bearer $TOKEN"
 
@@ -266,34 +238,65 @@ curl -X POST http://localhost:8080/api/v1/cart/items \
     "quantity": 2
   }'
 
-# Update cart item quantity
+# Update quantity
 curl -X PUT "http://localhost:8080/api/v1/cart/items/1?quantity=3" \
   -H "Authorization: Bearer $TOKEN"
 
-# Remove item from cart
+# Remove item
 curl -X DELETE http://localhost:8080/api/v1/cart/items/1 \
-  -H "Authorization: Bearer $TOKEN"
-
-# Clear cart
-curl -X DELETE http://localhost:8080/api/v1/cart \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-## Environment Variables
+---
+
+## Configuration
+
+### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SPRING_PROFILES_ACTIVE` | Active Spring profile (dev/prod) | dev |
-| `SERVER_PORT` | Server port | 8080 |
-| `DB_URL` | PostgreSQL connection URL | - |
-| `DB_USERNAME` | Database username | - |
-| `DB_PASSWORD` | Database password | - |
-| `JWT_SECRET` | JWT signing key (256-bit minimum) | change-me-in-production... |
-| `ALLOWED_ORIGINS` | CORS allowed origins | http://localhost:3000 |
-| `H2_CONSOLE_ENABLED` | Enable H2 console (dev only) | false |
-| `HIKARI_MAX_POOL_SIZE` | HikariCP max pool size | 20 |
-| `HIKARI_MIN_IDLE` | HikariCP min idle connections | 5 |
+| `DB_URL` | PostgreSQL connection URL | `jdbc:postgresql://localhost:5432/ecommerce` |
+| `DB_USERNAME` | Database username | `ecommerce_user` |
+| `DB_PASSWORD` | Database password | _Required_ |
+| `JWT_SECRET` | JWT signing key (256+ bits) | _Required_ |
+| `ALLOWED_ORIGINS` | CORS allowed origins | `http://localhost:3000` |
+
+---
+
+## Project Structure
+
+```
+src/main/java/com/jzavalaq/ecommerce/
+├── config/          # Security, multi-tenancy configuration
+├── controller/      # REST API endpoints
+├── service/         # Business logic
+├── repository/      # Data access with tenant filtering
+├── entity/          # JPA entities (Product, Variant, Cart, Tenant)
+├── dto/             # Request/Response DTOs
+├── security/        # JWT authentication, tenant resolution
+└── exception/       # Custom exceptions
+```
+
+---
+
+## Testing
+
+```bash
+# Run all tests
+mvn test
+
+# Run with coverage
+mvn test jacoco:report
+```
+
+---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Author
+
+**Juan Zavala** - [GitHub](https://github.com/jzavalaq) - [LinkedIn](https://linkedin.com/in/juanzavalaq)
